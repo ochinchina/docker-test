@@ -98,9 +98,9 @@ flannel: sleep 1; ./etcdctl --peers=http://127.0.0.1:2379 set /coreos.com/networ
 
 docker: ip addr del $(ip addr show dev docker0 | grep inet | awk '{print $2}') dev docker0; sleep 2; export $(cat /var/run/flannel/subnet.env); docker daemon --bip=$FLANNEL_SUBNET --mtu=$FLANNEL_MTU -H unix:///var/run/docker.sock
 
-kube-apiserver: sleep 3; ./kube-apiserver --address=0.0.0.0 --port=8080 --etcd_servers=http://$MASTER_IP:2379 --logtostderr=true --service-cluster-ip-range=10.1.0.0/16 --admission_control=NamespaceLifecycle,NamespaceExists,LimitRanger,ResourceQuota --service_account_key_file=/tmp/kube-serviceaccount.key --service_account_lookup=false
+kube-apiserver: sleep 3; ./kube-apiserver --address=0.0.0.0 --port=8080 --etcd_servers=http://$MASTER_IP:2379 --logtostderr=true --service-cluster-ip-range=10.1.0.0/16 --admission_control=NamespaceLifecycle,NamespaceExists,LimitRanger,ResourceQuota --service_account_lookup=false
 
-kube-controller-manager: sleep 5; ./kube-controller-manager --master=127.0.0.1:8080  --service_account_private_key_file=/tmp/kube-serviceaccount.key --logtostderr=true
+kube-controller-manager: sleep 5; ./kube-controller-manager --master=127.0.0.1:8080  --logtostderr=true
 
 kube-scheduler: sleep 5; ./kube-scheduler --master=127.0.0.1:8080 --logtostderr=true 
 
@@ -124,10 +124,6 @@ kube-proxy
 
 The flanneld will get a range of ip address from /coreos.com/network/config in etcd. The docker will be started using the flanneld allocated ip range. 
 
-For first time start the kubernetes-master, /tmp/kube-serviceaccount.key should be created with following command:
-```
-$ openssl genrsa -out /tmp/kube-serviceaccount.key 2048 2
-```
 
 create & edit .env file under kubernetes-master, the content of this .env file should be:
 
