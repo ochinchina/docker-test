@@ -1,6 +1,7 @@
-lannel: sleep 1; ./etcdctl --peers=http://$MASTER_IP:2379 set /coreos.com/network/config '{"Network": "10.0.0.0/8", "SubnetLen": 20,  "SubnetMin": "10.10.0.0", "SubnetMax": "10.99.0.0","Backend": {"Type": "udp","Port": 7890}}'; ./flanneld -etcd-endpoints="http://$MASTER_IP:2379"
+flannel: ./flanneld -etcd-endpoints="http://$MASTER_IP:2379"
 
-kubelet: ./kubelet --address=0.0.0.0 --port=10250 --api_servers=http://$MASTER_IP:8080 --logtostderr=true
+docker: sleep 1; ip addr del $(ip addr show dev docker0 | grep inet | awk '{print $2}') dev docker0; sleep 2; export $(cat /var/run/flannel/subnet.env); docker daemon --bip=$FLANNEL_SUBNET --mtu=$FLANNEL_MTU -H unix:///var/run/docker.sock
 
-kube-proxy: ./kube-proxy --master=http://$MASTER_IP:8080 --logtostderr=true
+kubelet: sleep 2; ./kubelet --address=0.0.0.0 --port=10250 --api_servers=http://$MASTER_IP:8080 --logtostderr=true
 
+kube-proxy: sleep 3; ./kube-proxy --master=http://$MASTER_IP:8080 --logtostderr=true
