@@ -1,15 +1,15 @@
 etcd: echo "master ip is $MASTER_IP"; ./etcd -name etcd1 -initial-advertise-peer-urls http://$MASTER_IP:2380 -listen-peer-urls http://$MASTER_IP:2380 -listen-client-urls http://$MASTER_IP:2379,http://127.0.0.1:2379 -advertise-client-urls http://$MASTER_IP:2379 -initial-cluster-token etcd-cluster-1 -initial-cluster etcd1=http://$MASTER_IP:2380 -initial-cluster-state new
 
-#flannel: sleep 1; ./etcdctl --peers=http://127.0.0.1:2379 set /coreos.com/network/config '{"Network": "10.0.0.0/8", "SubnetLen": 20,  "SubnetMin": "10.10.0.0", "SubnetMax": "10.99.0.0","Backend": {"Type": "udp","Port": 7890}}'; ./flanneld -etcd-endpoints="http://127.0.0.1:2379"
+flannel: sleep 1; ./etcdctl --peers=http://127.0.0.1:2379 set /coreos.com/network/config '{"Network": "10.0.0.0/8", "SubnetLen": 20,  "SubnetMin": "10.10.0.0", "SubnetMax": "10.99.0.0","Backend": {"Type": "udp","Port": 7890}}'; ./flanneld -etcd-endpoints="http://127.0.0.1:2379"
 
-#docker: ip addr del $(ip addr show dev docker0 | grep inet | awk '{print $2}') dev docker0; sleep 2; export $(cat /var/run/flannel/subnet.env); docker daemon --bip=$FLANNEL_SUBNET --mtu=$FLANNEL_MTU -H unix:///var/run/docker.sock
+docker: ip addr del $(ip addr show dev docker0 | grep inet | awk '{print $2}') dev docker0; sleep 2; export $(cat /var/run/flannel/subnet.env); docker daemon --bip=$FLANNEL_SUBNET --mtu=$FLANNEL_MTU -H unix:///var/run/docker.sock
 
-#kube-apiserver: sleep 3; ./kube-apiserver --address=0.0.0.0 --port=8080 --etcd_servers=http://$MASTER_IP:2379 --logtostderr=true --service-cluster-ip-range=10.1.0.0/16 --admission_control=NamespaceLifecycle,NamespaceExists,LimitRanger,ResourceQuota --service_account_key_file=/tmp/kube-serviceaccount.key --service_account_lookup=false
+kube-apiserver: sleep 3; ./kube-apiserver --address=0.0.0.0 --port=8080 --etcd_servers=http://$MASTER_IP:2379 --logtostderr=true --service-cluster-ip-range=10.1.0.0/16 --admission_control=NamespaceLifecycle,NamespaceExists,LimitRanger,ResourceQuota --service_account_lookup=false
 
-#kube-controller-manager: sleep 5; ./kube-controller-manager --master=127.0.0.1:8080  --service_account_private_key_file=/tmp/kube-serviceaccount.key --logtostderr=true
+kube-controller-manager: sleep 5; ./kube-controller-manager --master=127.0.0.1:8080  --logtostderr=true
 
-#kube-scheduler: sleep 5; ./kube-scheduler --master=127.0.0.1:8080 --logtostderr=true 
+kube-scheduler: sleep 5; ./kube-scheduler --master=127.0.0.1:8080 --logtostderr=true 
 
-#kubelet: sleep 6; ./kubelet --address=0.0.0.0 --port=10250 --api_servers=http://$MASTER_IP:8080 --logtostderr=true
+kubelet: sleep 6; ./kubelet --address=0.0.0.0 --port=10250 --api_servers=http://$MASTER_IP:8080 --logtostderr=true
 
-#kube-proxy: sleep 7; ./kube-proxy --master=http://$MASTER_IP:8080 --logtostderr=true
+kube-proxy: sleep 7; ./kube-proxy --master=http://$MASTER_IP:8080 --logtostderr=true
