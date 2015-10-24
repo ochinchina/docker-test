@@ -1,0 +1,6 @@
+lannel: sleep 1; ./etcdctl --peers=http://$MASTER_IP:2379 set /coreos.com/network/config '{"Network": "10.0.0.0/8", "SubnetLen": 20,  "SubnetMin": "10.10.0.0", "SubnetMax": "10.99.0.0","Backend": {"Type": "udp","Port": 7890}}'; ./flanneld -etcd-endpoints="http://$MASTER_IP:2379"
+
+kubelet: ./kubelet --address=0.0.0.0 --port=10250 --api_servers=http://$MASTER_IP:8080 --logtostderr=true
+
+kube-proxy: ./kube-proxy --master=http://$MASTER_IP:8080 --logtostderr=true
+
