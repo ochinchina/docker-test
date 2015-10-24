@@ -106,5 +106,53 @@ Then start the kubernetes-master simply with shoreman
 $ cd kubernetes-master
 $ sudo shoreman
 ```
+####5, setup kubernetes minions
+
+find some node or virtual machine as kubernetes minions
+
+##### create kubernetes-minion directory
+
+```shell
+$ mkdir kubernetes-minion
+```
+
+##### copy the following files to kubernetes-minions
+
+```
+flanneld
+kubelet
+kube-proxy
+kubectl
+```
+
+#####create&edit Procfile under kubernetes-minion directory
+
+The content of Procfile should be:
+
+```
+flannel: ./flanneld -etcd-endpoints="http://$MASTER_IP:2379"
+
+kubelet: ./kubelet --address=0.0.0.0 --port=10250 --api_servers=http://$MASTER_IP:8080 --logtostderr=true
+
+kube-proxy: ./kube-proxy --master=http://$MASTER_IP:8080 --logtostderr=true
+```
+
+#####create ".env" file under kubernetes-minion
+
+the .env file under kubernetes-minion should include the MASTER_IP environment setting, its content looks like:
+
+```
+MASTER_IP=<your master IP address>
+```
+#####start the kubernetes-minion
+
+```shell
+$ cd kubernetes-minion
+$ sudo shoreman
+```
+
+####6, create more kubernetes minion
+
+repeat step 5 to create more kubernetes minions and start it
 
 
