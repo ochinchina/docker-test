@@ -1,0 +1,10 @@
+etcd: ./etcd --listen-client-urls="http://localhost:2379,http://$ETCD_IP:2379" --listen-peer-urls="http://$ETCD_IP:2380" --advertise-client-urls="http://$ETCD_IP:2379" --initial-cluster="default=http://$ETCD_IP:2380" -initial-cluster-token etcd-cluster-1 -initial-cluster-state new
+
+flanneld: sleep 2; cat flanneld.conf | ./etcdctl set /coreos.com/network/config; ./flanneld -etcd-endpoints=http://$ETCD_IP:2379 
+
+docker: sleep 3;export $(cat /run/flannel/subnet.env); ./docker-latest daemon -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock --cluster-store=etcd://$ETCD_IP:2379 --bip=$FLANNEL_SUBNET --mtu=$FLANNEL_MTU
+
+swarm: sleep 4;./swarm join --addr=$DOCKER_BIND_IP:2375 etcd://$ETCD_IP:2379/swarm
+
+swarm-manager:sleep 5;./swarm manage --strategy "spread" -H 0.0.0.0:2376 --replication --addr $DOCKER_BIND_IP:2375 etcd://$ETCD_IP:2379/swarm
+

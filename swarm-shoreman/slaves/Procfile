@@ -1,0 +1,9 @@
+
+flanneld: ./flanneld -etcd-endpoints=http://$ETCD_IP:2379 
+
+docker: sleep 1;export $(cat /run/flannel/subnet.env); ./docker-latest daemon -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock --cluster-store=etcd://$ETCD_IP:2379 --bip=$FLANNEL_SUBNET --mtu=$FLANNEL_MTU
+
+swarm: sleep 2;./swarm join --addr=$DOCKER_BIND_IP:2375 etcd://$ETCD_IP:2379/swarm
+
+swarm-manager: sleep 3;./swarm manage --strategy "spread" -H 0.0.0.0:2376 --replication --addr $DOCKER_BIND_IP:2375 etcd://$ETCD_IP:2379/swarm
+
