@@ -35,7 +35,7 @@ $ ./build
 
 find a machine or create a virtual machine as the master node
 
-####a)create kubernetes-master directory on master node
+####create kubernetes-master directory on master node
 create kubernetes-master directory in the master node
 
 ```shell
@@ -73,7 +73,10 @@ $ ls -l
 -rwxr-xr-x 1 root root  8903712 Oct 24 10:47 flanneld
 ```
 
-#####create a Profile for shoreman to start kubernetes master
+#####install docker but don't start it
+install docker binary to your master node but it should not be started
+
+#####create a Procfile for shoreman to start kubernetes master
 
 go to the kubernetes-master directory in master node, create Procfile and .env for shoreman
 
@@ -81,21 +84,42 @@ go to the kubernetes-master directory in master node, create Procfile and .env f
 $ cd kubernetes-master
 $ touch Procfile
 $ vi Procfile
-$ cat Procfile
+```
+The content of Procfile should be:
+```
 etcd: ./etcd -name etcd1 -initial-advertise-peer-urls http://$MASTER_IP:2380 -listen-peer-urls http://$MASTER_IP:2380 -listen-client-urls http://$MASTER_IP:2379,http://127.0.0.1:2379 -advertise-client-urls http://$MASTER_IP:2379 -initial-cluster-token etcd-cluster-1 -initial-cluster etcd1=http://$MASTER_IP:2380 -initial-cluster-state new
 
 flannel: sleep 1; ./etcdctl --peers=http://127.0.0.1:2379 set /coreos.com/network/config '{"Network": "10.0.0.0/8", "SubnetLen": 20,  "SubnetMin": "10.10.0.0", "SubnetMax": "10.99.0.0","Backend": {"Type": "udp","Port": 7890}}'; ./flanneld -etcd-endpoints="http://127.0.0.1:2379"
 
-kube-apiserver: sleep 2; ./kube-apiserver --address=0.0.0.0 --port=8080 --etcd_servers=http://$MASTER_IP:2379 --logtostderr=true --service-cluster-ip-range=10.1.0.0/16 --admission_control=NamespaceLifecycle,NamespaceExists,LimitRanger,ResourceQuota --service_account_key_file=/tmp/kube-serviceaccount.key --service_account_lookup=false
+docker: ip addr del $(ip addr show dev docker0 | grep inet | awk '{print $2}') dev docker0; sleep 2; export $(cat /var/run/flannel/subnet.env); docker daemon --bip=$FLANNEL_SUBNET --mtu=$FLANNEL_MTU -H unix:///var/run/docker.sock
 
-kube-controller-manager: sleep 4; ./kube-controller-manager --master=127.0.0.1:8080  --service_account_private_key_file=/tmp/kube-serviceaccount.key --logtostderr=true
+kube-apiserver: sleep 3; ./kube-apiserver --address=0.0.0.0 --port=8080 --etcd_servers=http://$MASTER_IP:2379 --logtostderr=true --service-cluster-ip-range=10.1.0.0/16 --admission_control=NamespaceLifecycle,NamespaceExists,LimitRanger,ResourceQuota --service_account_key_file=/tmp/kube-serviceaccount.key --service_account_lookup=false
 
-kube-scheduler: sleep 4; ./kube-scheduler --master=127.0.0.1:8080 --logtostderr=true 
+kube-controller-manager: sleep 5; ./kube-controller-manager --master=127.0.0.1:8080  --service_account_private_key_file=/tmp/kube-serviceaccount.key --logtostderr=true
 
+kube-scheduler: sleep 5; ./kube-scheduler --master=127.0.0.1:8080 --logtostderr=true 
+
+kubelet: ./kubelet --address=0.0.0.0 --port=10250 --api_servers=http://$MASTER_IP:8080 --logtostderr=true
+
+kube-proxy: ./kube-proxy --master=http://$MASTER_IP:8080 --logtostderr=true
 
 ```
 
-for first time start the kubernetes-master, /tmp/kube-serviceaccount.key should be created with following command:
+The above Procfile will ask shoreman start the following processes one by one:
+```
+etcd
+flanneld
+docker
+kube-apiserver
+kube-controller-manager
+kube-scheduler
+kubelet
+kube-proxy
+```
+
+The flanneld will get a range of ip address from /coreos.com/network/config in etcd. The docker will be started using the flanneld allocated ip range. 
+
+For first time start the kubernetes-master, /tmp/kube-serviceaccount.key should be created with following command:
 ```
 $ openssl genrsa -out /tmp/kube-serviceaccount.key 2048 2
 ```
@@ -137,6 +161,8 @@ The content of Procfile should be:
 
 ```
 flannel: ./flanneld -etcd-endpoints="http://$MASTER_IP:2379"
+
+docker: ip addr del $(ip addr show dev docker0 | grep inet | awk '{print $2}') dev docker0; sleep 2; export $(cat /var/run/flannel/subnet.env); docker daemon --bip=$FLANNEL_SUBNET --mtu=$FLANNEL_MTU -H unix:///var/run/docker.sock
 
 kubelet: ./kubelet --address=0.0.0.0 --port=10250 --api_servers=http://$MASTER_IP:8080 --logtostderr=true
 
