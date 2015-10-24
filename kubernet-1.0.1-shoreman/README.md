@@ -155,6 +155,10 @@ kube-proxy
 kubectl
 ```
 
+#####install docker but don't start it
+
+install docker to your minion node but don't start it
+
 #####create&edit Procfile under kubernetes-minion directory
 
 The content of Procfile should be:
