@@ -99,9 +99,9 @@ kube-controller-manager: sleep 5; ./kube-controller-manager --master=127.0.0.1:8
 
 kube-scheduler: sleep 5; ./kube-scheduler --master=127.0.0.1:8080 --logtostderr=true 
 
-kubelet: ./kubelet --address=0.0.0.0 --port=10250 --api_servers=http://$MASTER_IP:8080 --logtostderr=true
+kubelet: sleep 6; ./kubelet --address=0.0.0.0 --port=10250 --api_servers=http://$MASTER_IP:8080 --logtostderr=true
 
-kube-proxy: ./kube-proxy --master=http://$MASTER_IP:8080 --logtostderr=true
+kube-proxy: sleep 7; ./kube-proxy --master=http://$MASTER_IP:8080 --logtostderr=true
 
 ```
 
@@ -162,11 +162,11 @@ The content of Procfile should be:
 ```
 flannel: ./flanneld -etcd-endpoints="http://$MASTER_IP:2379"
 
-docker: ip addr del $(ip addr show dev docker0 | grep inet | awk '{print $2}') dev docker0; sleep 2; export $(cat /var/run/flannel/subnet.env); docker daemon --bip=$FLANNEL_SUBNET --mtu=$FLANNEL_MTU -H unix:///var/run/docker.sock
+docker: sleep 1; ip addr del $(ip addr show dev docker0 | grep inet | awk '{print $2}') dev docker0; sleep 2; export $(cat /var/run/flannel/subnet.env); docker daemon --bip=$FLANNEL_SUBNET --mtu=$FLANNEL_MTU -H unix:///var/run/docker.sock
 
-kubelet: ./kubelet --address=0.0.0.0 --port=10250 --api_servers=http://$MASTER_IP:8080 --logtostderr=true
+kubelet: sleep 2; ./kubelet --address=0.0.0.0 --port=10250 --api_servers=http://$MASTER_IP:8080 --logtostderr=true
 
-kube-proxy: ./kube-proxy --master=http://$MASTER_IP:8080 --logtostderr=true
+kube-proxy: sleep 3; ./kube-proxy --master=http://$MASTER_IP:8080 --logtostderr=true
 ```
 
 #####create ".env" file under kubernetes-minion
