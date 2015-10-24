@@ -100,6 +100,12 @@ for first time start the kubernetes-master, /tmp/kube-serviceaccount.key should 
 $ openssl genrsa -out /tmp/kube-serviceaccount.key 2048 2
 ```
 
+create & edit .env file under kubernetes-master, the content of this .env file should be:
+
+```
+MASTER_IP=<your master IP address>
+```
+
 Then start the kubernetes-master simply with shoreman
 
 ```shell
@@ -154,5 +160,7 @@ $ sudo shoreman
 ####6, create more kubernetes minion
 
 repeat step 5 to create more kubernetes minions and start it
+
+####7, test the kubernetes cluster with example
 
 
