@@ -49,6 +49,9 @@ copy the following kubernetes binary to the master node kubernetes-master direct
 kube-apiserver
 kube-control-manager
 kube-scheduler
+kubelet
+kube-proxy
+kubectl
 ```
 
 #####copy etcd & ectdctl to master node
@@ -67,6 +70,8 @@ $ ls -l
 -rwxr-x--- 1 root root 33256080 Oct 24 10:46 kube-controller-manager
 -rwxr-x--- 1 root root 39872928 Oct 24 10:46 kube-apiserver
 -rwxr-x--- 1 root root 20341304 Oct 24 11:16 kubectl
+-rwxr-x--- 1 root root 35649824 Oct 24 15:04 kubelet
+-rwxr-x--- 1 root root 17726544 Oct 24 15:04 kube-proxy
 -rwxr-x--- 1 root root 17877376 Oct 24 10:46 kube-scheduler
 -rwxr-xr-x 1 root root  8687648 Oct 24 10:47 etcd
 -rwxr-xr-x 1 root root 12202592 Oct 24 10:47 etcdctl
