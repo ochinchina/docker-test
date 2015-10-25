@@ -100,5 +100,42 @@ $ systemctl start docker
 
 ####configure kubernetes master
 
+Choose one node for running kubernetes master, in this example, the 10.245.1.101 is choosed as the kubernetes master
+
+change KUBE_API_ADDRESS, KUBE_API_PORT, KUBE_ETCD_SERVERS, KUBE_SERVICE_ADDRESSES and KUBE_SERVICE_ADDRESSES parameters in /etc/kubernetes/apiserver
+
+```
+KUBE_API_ADDRESS="--address=10.245.1.101"
+KUBE_API_PORT="--port=8080"
+KUBE_ETCD_SERVERS="--etcd_servers=http://10.245.1.101:2379,http://10.245.1.102:2379,http://10.245.1.103:2379"
+//the KUBE_SERVICE_ADDRESSES should be in network 10.0.0.0/8 but should be not in range 10.10.0.0 to 10.99.0.0
+//because this range is already allocated for flannel use
+KUBE_SERVICE_ADDRESSES="--service-cluster-ip-range=10.254.0.0/16"
+KUBE_ADMISSION_CONTROL="--admission_control=NamespaceLifecycle,NamespaceExists,LimitRanger,SecurityContextDeny,ResourceQuota"
+```
+
+Then start the kube-apiserver, kube-controller-manager and kube-scheduler
+
+```shell
+$ sudo systemctl start kube-apiserver
+$ sudo systemctl start kube-controller-manager
+$ sudo systemctl start kube-scheduler
+```
 
 ####configure kubernetes minions
+
+Edit the /etc/kubernetes/kubelet and change the KUBELET_ADDRESS, KUBELET_HOSTNAME, and KUBELET_API_SERVER
+
+An example of minion on node 10.245.1.102 is
+```
+KUBELET_ADDRESS="--address=10.245.1.102"
+KUBELET_HOSTNAME="--hostname_override=minion-1"
+KUBELET_API_SERVER="--api_servers=http://10.245.1.101:8080"
+```
+
+start the kubelet and the kube-proxy on all minion nodes
+
+```
+$ sudo systemctl start kubelet
+$ sudo systemctl start kube-proxy
+```
