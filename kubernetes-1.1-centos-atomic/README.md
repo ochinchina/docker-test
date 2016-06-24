@@ -11,15 +11,15 @@ if the DHCP is used but no network address is got, edit the file /etc/sysconfig/
 if your atomic is installed behind proxy server, before upgrading the atomic host, you need to add proxy in the file /etc/ostree/remotes.d/centos-atomic-host.conf
 
 ```shell
-# cd /etc/ostree/remotes.d
-# cat centos-atomic-host.conf
+$ cd /etc/ostree/remotes.d
+$ cat centos-atomic-host.conf
 [remote "centos-atomic-host"]
-url=hrrp://mirror.centos.org/centos/7/atomic/x86_64/rep
+url=http://mirror.centos.org/centos/7/atomic/x86_64/rep
 branches=centos-atomic-host/7/x86_64/standard;
 gpg-verify=true
 proxy=http://example.com:8080
 ```
-#####more space for root
+#####more space for root directory
 
 edit the file /etc/sysconfig/docker-storage-setup file and add the ROOT_SIZE to this file
 
@@ -30,6 +30,21 @@ ROOT_SIZE=6G
 
 ```
 
+#####proxy setting for docker
+
+if docker runs behind proxy, the file /etc/sysconfig/docker should be edit and following lines should be append to the end of the file /etc/sysconfig/docker:
+
+```
+HTTP_PROXY=http://example.com:8080
+HTTPS_PROXY=https://example.com:8080
+```
+
+and then restart the docker:
+
+```shell
+$ sudo vi /etc/sysconfig/docker
+$ sudo systemctl restart docker
+```
 
 ####install docker&kubernetes
 
