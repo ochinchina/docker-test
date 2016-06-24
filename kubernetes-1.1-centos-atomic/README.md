@@ -2,6 +2,35 @@
 
 get the centos atomic from the http://cloud.centos.org/centos/7/atomic/images/CentOS-Atomic-Host-7-Installer.iso, install this .iso to your machine
 
+#####configure the network
+
+if the DHCP is used but no network address is got, edit the file /etc/sysconfig/network-scripts/ifcfg-enp0s3 and change the item "ONBOOT" from "no" to "yes"
+
+#####configure proxy for atomic upgrade
+
+if your atomic is installed behind proxy server, before upgrading the atomic host, you need to add proxy in the file /etc/ostree/remotes.d/centos-atomic-host.conf
+
+```shell
+# cd /etc/ostree/remotes.d
+# cat centos-atomic-host.conf
+[remote "centos-atomic-host"]
+url=hrrp://mirror.centos.org/centos/7/atomic/x86_64/rep
+branches=centos-atomic-host/7/x86_64/standard;
+gpg-verify=true
+proxy=http://example.com:8080
+```
+#####more space for root
+
+edit the file /etc/sysconfig/docker-storage-setup file and add the ROOT_SIZE to this file
+
+```shell
+
+$ cat /etc/sysconfig/docker-storage-setup | grep ROOT_SIZE
+ROOT_SIZE=6G
+
+```
+
+
 ####install docker&kubernetes
 
 
