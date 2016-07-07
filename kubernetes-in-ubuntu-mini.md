@@ -53,7 +53,7 @@ Type=notify
 # exists and systemd currently does not support the cgroup feature set required
 # for containers run by docker
 Environment="HTTP_PROXY=http://example.com:8080" "HTTPS_PROXY=https://example.com:8080" "NO_PROXY=localhost,127.0.0.1,your_private_ip_network"
-ExecStart=/usr/bin/docker daemon -H unix:///var/run/docker_bootstrap.sock -p /var/run/docker_bootstrap.pid --iptables=false --ip-masq=false --bridge=none --graph=/var/lib/docker_bootstrap
+ExecStart=/usr/bin/docker daemon -H unix:///var/run/docker_bootstrap.sock -p /var/run/docker_bootstrap.pid --iptables=false --ip-masq=false --bridge=none --graph=/var/lib/docker_bootstrap --exec-root=/var/run/docker_bootstrap
 MountFlags=slave
 LimitNOFILE=1048576
 LimitNPROC=1048576
@@ -73,3 +73,57 @@ start the docker_bootstrap service
 $ sudo systemctl daemon-reload
 $ sudo systemctl start docker_bootstrap
 ```
+###setup etcd
+```shell
+$ sudo docker -H unix:///var/run/docker_bootstrap.sock pull gcr.io/google_containers/etcd-amd64:2.2.5
+$ sudo docker -H unix:///var/run/docker_bootstrap.sock run \
+--net=host \
+-d gcr.io/google_containers/etcd-amd64:2.2.5 \
+/usr/local/bin/etcd \
+--addr=127.0.0.1:4001 \
+--bind-addr=0.0.0.0:4001
+--data-dir=/var/etcd/data
+$ sudo docker -H unix:///var/run/docker_bootstrap.sock ps
+CONTAINER ID        IMAGE                                       COMMAND                  CREATED             STATUS              PORTS               NAMES
+5f9ed5673bc2        gcr.io/google_containers/etcd-amd64:2.2.5   "/usr/local/bin/etcd "   8 seconds ago       Up 7 seconds                            reverent_jepsen
+
+$  sudo docker -H unix:///var/run/docker_bootstrap.sock run --net=host gcr.io/google_containers/etcd-amd64:2.2.5 etcdctl set /coreos.com/network/config '{ "Network": "10.1.0.0/16" }'
+
+```
+###setup flannel
+
+```shell
+$ sudo docker -H unix:///var/run/docker_bootstrap.sock run -d --net=host --privileged -v /dev/net:/dev/net quay.io/coreos/flannel:0.5.5
+
+$ sudo docker -H unix:///var/run/docker_bootstrap.sock exec <flannel_container_id> cat /run/flannel/subnet.env
+```
+
+###modify the docker options
+
+add following lines to the /etc/default/docker file
+
+```
+FLANNEL_SUBNET=10.1.88.1/24
+FLANNEL_MTU=1472
+DOCKER_OPTS=--bip=${FLANNEL_SUBNET} --mtu=${FLANNEL_MTU}
+```
+
+change the line in file /lib/systemd/system/docker.service from
+
+```
+ExecStart=/usr/bin/docker daemon -H fd://
+```
+
+to
+
+```
+ExecStart=/usr/bin/docker daemon -H fd:// ${DOCKER_OPTS}
+```
+
+restart the docker
+
+```shell
+$ sudo systemctl 
+```
+
+
