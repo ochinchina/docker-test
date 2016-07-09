@@ -94,7 +94,7 @@ $  sudo docker -H unix:///var/run/docker_bootstrap.sock run --net=host gcr.io/go
 ###setup flannel
 
 ```shell
-$ sudo docker -H unix:///var/run/docker_bootstrap.sock run -v /run/flannel:/run/flannel -d --net=host --privileged -v /dev/net:/dev/net quay.io/coreos/flannel:0.5.5
+$ sudo docker -H unix:///var/run/docker_bootstrap.sock run -v /run/flannel:/run/flannel -d --net=host --privileged -v /dev/net:/dev/net quay.io/coreos/flannel:0.5.5 /opt/bin/flanneld [-iface=enp0s8]
 
 $ sudo docker -H unix:///var/run/docker_bootstrap.sock exec <flannel_container_id> cat /run/flannel/subnet.env
 ```
@@ -155,8 +155,31 @@ $ sudo systemctl restart docker
 ```
 ###setup k8s master
 
+```
+sudo docker run -d \
+--net=host \
+--pid=host \
+gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
+/hyperkube apiserver \
+--advertise-address=10.246.1.101 \
+--insecure-bind-address=10.246.1.101 --insecure-port=8080 --etcd_servers=http://10.246.1.101:4001 --logtostderr=true --service-cluster-ip-range=192.168.0.0/16
+
+sudo docker run -d \
+--net=host \
+--pid=host \
+gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
+/hyperkube controller-manager --master=10.246.1.101:8080 --logtostderr=true
+
+
+sudo docker run -d \
+--net=host \
+--pid=host \
+gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
+/hyperkube scheduler --master=10.246.1.101:8080 --logtostderr=true
+```
+###set up k8s minion
 ```shell
-$ docker run -d \
+sudo docker run -d \
 --volume=/:/rootfs:ro \
 --volume=/sys:/sys:rw \
 --volume=/var/lib/docker/:/var/lib/docker:rw \
@@ -167,21 +190,32 @@ $ docker run -d \
 --privileged \
 gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
 /hyperkube kubelet \
---containerized \
---hostname-override=127.0.0.1 \
---api-servers=http://localhost:8080 \
---config=/etc/kubernetes/manifests \
---cluster-dns=10.0.0.10 \
---cluster-domain=cluster.local \
---allow-privileged --v=2
+--address=0.0.0.0 --port=10250 \
+--api_servers=http://10.246.1.101:8080 --logtostderr=true
+
+
+sudo docker run -d \
+--volume=/:/rootfs:ro \
+--volume=/sys:/sys:rw \
+--volume=/var/lib/docker/:/var/lib/docker:rw \
+--volume=/var/lib/kubelet/:/var/lib/kubelet:rw \
+--volume=/var/run:/var/run:rw \
+--net=host \
+--pid=host \
+--privileged \
+gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
+/hyperkube proxy \
+--master=http://10.246.1.101:8080 --logtostderr=true
 ```
-set the kubectl
+
+```
+###install the kubectl
 
 ```shell
 $ wget http://storage.googleapis.com/kubernetes-release/release/v1.3.0/bin/linux/amd64/kubectl
 $ cp kubectl /usr/bin/kubectl  
 $ chmod +x /usr/bin/kubectl
-$ kubectl config set-cluster test-doc --server=http://localhost:8080
+$ kubectl config set-cluster test-doc --server=http://10.246.1.101:8080
 $ kubectl config set-context test-doc --cluster=test-doc
 $ kubectl config use-context test-doc
 $ kubectl get nodes
