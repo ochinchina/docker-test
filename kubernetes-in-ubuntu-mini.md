@@ -21,15 +21,15 @@ Delegate=yes
 
 ###start bootstrap docker daemon for flannel and etcd
 
-create file /lib/systemd/system/docker_bootstrap.socket and put following contents to this file
+create file /lib/systemd/system/docker-bootstrap.socket and put following contents to this file
 
 ```
 [Unit]
 Description=Docker Socket for the API
-PartOf=docker_bootstrap.service
+PartOf=docker-bootstrap.service
 
 [Socket]
-ListenStream=/var/run/docker_bootstrap.sock
+ListenStream=/var/run/docker-bootstrap.sock
 SocketMode=0660
 SocketUser=root
 SocketGroup=docker
@@ -38,14 +38,14 @@ SocketGroup=docker
 WantedBy=sockets.target
 ```
 
-create file /lib/systemd/system/docker_bootstrap.service and put following contents to this file
+create file /lib/systemd/system/docker-bootstrap.service and put following contents to this file
 
 ```
 [Unit]
 Description=Docker Application Container Engine
 Documentation=https://docs.docker.com
-After=network.target docker_bootstrap.socket
-Requires=docker_bootstrap.socket
+After=network.target docker-bootstrap.socket
+Requires=docker-bootstrap.socket
 
 [Service]
 Type=notify
@@ -53,7 +53,7 @@ Type=notify
 # exists and systemd currently does not support the cgroup feature set required
 # for containers run by docker
 Environment="HTTP_PROXY=http://example.com:8080" "HTTPS_PROXY=https://example.com:8080" "NO_PROXY=localhost,127.0.0.1,your_private_ip_network"
-ExecStart=/usr/bin/docker daemon -H unix:///var/run/docker_bootstrap.sock -p /var/run/docker_bootstrap.pid --iptables=false --ip-masq=false --bridge=none --graph=/var/lib/docker_bootstrap --exec-root=/var/run/docker_bootstrap
+ExecStart=/usr/bin/docker daemon -H unix:///var/run/docker-bootstrap.sock -p /var/run/docker-bootstrap.pid --iptables=false --ip-masq=false --bridge=none --graph=/var/lib/docker-bootstrap --exec-root=/var/run/docker-bootstrap
 MountFlags=slave
 LimitNOFILE=1048576
 LimitNPROC=1048576
@@ -67,16 +67,16 @@ WantedBy=multi-user.target
 
 ```
 
-start the docker_bootstrap service
+start the docker-bootstrap service
 
 ```shell
 $ sudo systemctl daemon-reload
-$ sudo systemctl start docker_bootstrap
+$ sudo systemctl start docker-bootstrap
 ```
 ###setup etcd
 ```shell
-$ sudo docker -H unix:///var/run/docker_bootstrap.sock pull gcr.io/google_containers/etcd-amd64:2.2.5
-$ sudo docker -H unix:///var/run/docker_bootstrap.sock run \
+$ sudo docker -H unix:///var/run/docker-bootstrap.sock pull gcr.io/google_containers/etcd-amd64:2.2.5
+$ sudo docker -H unix:///var/run/docker-bootstrap.sock run \
 --net=host \
 -v /var/etcd/data:/var/etcd/data \
 -d gcr.io/google_containers/etcd-amd64:2.2.5 \
@@ -84,19 +84,19 @@ $ sudo docker -H unix:///var/run/docker_bootstrap.sock run \
 --addr=127.0.0.1:4001 \
 --bind-addr=0.0.0.0:4001 \
 --data-dir=/var/etcd/data
-$ sudo docker -H unix:///var/run/docker_bootstrap.sock ps
+$ sudo docker -H unix:///var/run/docker-bootstrap.sock ps
 CONTAINER ID        IMAGE                                       COMMAND                  CREATED             STATUS              PORTS               NAMES
 5f9ed5673bc2        gcr.io/google_containers/etcd-amd64:2.2.5   "/usr/local/bin/etcd "   8 seconds ago       Up 7 seconds                            reverent_jepsen
 
-$  sudo docker -H unix:///var/run/docker_bootstrap.sock run --net=host gcr.io/google_containers/etcd-amd64:2.2.5 etcdctl set /coreos.com/network/config '{ "Network": "10.1.0.0/16" }'
+$  sudo docker -H unix:///var/run/docker-bootstrap.sock run --net=host gcr.io/google_containers/etcd-amd64:2.2.5 etcdctl set /coreos.com/network/config '{ "Network": "10.1.0.0/16" }'
 
 ```
 ###setup flannel
 
 ```shell
-$ sudo docker -H unix:///var/run/docker_bootstrap.sock run -v /run/flannel:/run/flannel -d --net=host --privileged -v /dev/net:/dev/net quay.io/coreos/flannel:0.5.5 /opt/bin/flanneld [-iface=enp0s8]
+$ sudo docker -H unix:///var/run/docker-bootstrap.sock run -v /run/flannel:/run/flannel -d --net=host --privileged -v /dev/net:/dev/net quay.io/coreos/flannel:0.5.5 /opt/bin/flanneld [-iface=enp0s8]
 
-$ sudo docker -H unix:///var/run/docker_bootstrap.sock exec <flannel_container_id> cat /run/flannel/subnet.env
+$ sudo docker -H unix:///var/run/docker-bootstrap.sock exec <flannel_container_id> cat /run/flannel/subnet.env
 ```
 
 ###modify the docker options
@@ -123,7 +123,7 @@ After doing above modification, the file /lib/systemd/system/docker.service look
 [Unit]
 Description=Docker Application Container Engine
 Documentation=https://docs.docker.com
-After=network.target docker.socket docker_bootstrap.service
+After=network.target docker.socket docker-bootstrap.service
 Requires=docker.socket
 
 [Service]
@@ -156,26 +156,37 @@ $ sudo systemctl restart docker
 ###setup k8s master
 
 ```
-sudo docker run -d \
+$ sudo docker run -d \
 --net=host \
 --pid=host \
+--restart=always \
 gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
 /hyperkube apiserver \
 --advertise-address=10.246.1.101 \
---insecure-bind-address=10.246.1.101 --insecure-port=8080 --etcd_servers=http://10.246.1.101:4001 --logtostderr=true --service-cluster-ip-range=192.168.0.0/16
+--insecure-bind-address=10.246.1.101 \
+--insecure-port=8080 \
+--etcd_servers=http://10.246.1.101:4001 \
+--logtostderr=true \
+--service-cluster-ip-range=192.168.0.0/16
 
-sudo docker run -d \
+$ sudo docker run -d \
 --net=host \
 --pid=host \
+--restart=always \
 gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
-/hyperkube controller-manager --master=10.246.1.101:8080 --logtostderr=true
+/hyperkube controller-manager \
+--master=10.246.1.101:8080 \
+--logtostderr=true
 
 
-sudo docker run -d \
+$ sudo docker run -d \
 --net=host \
 --pid=host \
+--restart=always \
 gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
-/hyperkube scheduler --master=10.246.1.101:8080 --logtostderr=true
+/hyperkube scheduler \
+--master=10.246.1.101:8080 \
+--logtostderr=true
 ```
 ###set up k8s minion
 ```shell
@@ -191,7 +202,8 @@ sudo docker run -d \
 gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
 /hyperkube kubelet \
 --address=0.0.0.0 --port=10250 \
---api_servers=http://10.246.1.101:8080 --logtostderr=true
+--api_servers=http://10.246.1.101:8080 \
+--logtostderr=true
 
 
 sudo docker run -d \
@@ -205,7 +217,8 @@ sudo docker run -d \
 --privileged \
 gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
 /hyperkube proxy \
---master=http://10.246.1.101:8080 --logtostderr=true
+--master=http://10.246.1.101:8080 \
+--logtostderr=true
 ```
 
 ```
