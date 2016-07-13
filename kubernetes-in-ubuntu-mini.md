@@ -221,7 +221,6 @@ gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
 --logtostderr=true
 ```
 
-```
 ###install the kubectl
 
 ```shell
@@ -234,3 +233,33 @@ $ kubectl config use-context test-doc
 $ kubectl get nodes
 ```
 
+###External IPs(copied from http://kubernetes.io/docs/user-guide/services/#publishing-services---service-types)
+
+If there are external IPs that route to one or more cluster nodes, Kubernetes services can be exposed on those externalIPs. Traffic that ingresses into the cluster with the external IP (as destination IP), on the service port, will be routed to one of the service endpoints. externalIPs are not managed by Kubernetes and are the responsibility of the cluster administrator.
+
+In the ServiceSpec, externalIPs can be specified along with any of the ServiceTypes. In the example below, my-service can be accessed by clients on 80.11.12.10:80 (externalIP:port)
+```shell
+{
+    "kind": "Service",
+    "apiVersion": "v1",
+    "metadata": {
+        "name": "my-service"
+    },
+    "spec": {
+        "selector": {
+            "app": "MyApp"
+        },
+        "ports": [
+            {
+                "name": "http",
+                "protocol": "TCP",
+                "port": 80,
+                "targetPort": 9376
+            }
+        ],
+        "externalIPs" : [
+            "80.11.12.10"
+        ]
+    }
+}
+```
