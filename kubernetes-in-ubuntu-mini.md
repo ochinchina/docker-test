@@ -160,7 +160,7 @@ $ sudo docker run -d \
 --net=host \
 --pid=host \
 --restart=always \
-gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
+gcr.io/google_containers/hyperkube-amd64:v1.2.6 \
 /hyperkube apiserver \
 --advertise-address=10.246.1.101 \
 --insecure-bind-address=10.246.1.101 \
@@ -173,7 +173,7 @@ $ sudo docker run -d \
 --net=host \
 --pid=host \
 --restart=always \
-gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
+gcr.io/google_containers/hyperkube-amd64:v1.2.6 \
 /hyperkube controller-manager \
 --master=10.246.1.101:8080 \
 --logtostderr=true
@@ -183,7 +183,7 @@ $ sudo docker run -d \
 --net=host \
 --pid=host \
 --restart=always \
-gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
+gcr.io/google_containers/hyperkube-amd64:v1.2.6 \
 /hyperkube scheduler \
 --master=10.246.1.101:8080 \
 --logtostderr=true
@@ -199,7 +199,7 @@ sudo docker run -d \
 --net=host \
 --pid=host \
 --privileged \
-gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
+gcr.io/google_containers/hyperkube-amd64:v1.2.6 \
 /hyperkube kubelet \
 --address=0.0.0.0 --port=10250 \
 --api_servers=http://10.246.1.101:8080 \
@@ -215,7 +215,7 @@ sudo docker run -d \
 --net=host \
 --pid=host \
 --privileged \
-gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
+gcr.io/google_containers/hyperkube-amd64:v1.2.6 \
 /hyperkube proxy \
 --master=http://10.246.1.101:8080 \
 --logtostderr=true
@@ -224,13 +224,219 @@ gcr.io/google_containers/hyperkube-amd64:v1.3.0 \
 ###install the kubectl
 
 ```shell
-$ wget http://storage.googleapis.com/kubernetes-release/release/v1.3.0/bin/linux/amd64/kubectl
+$ wget http://storage.googleapis.com/kubernetes-release/release/v1.2.6/bin/linux/amd64/kubectl
 $ cp kubectl /usr/bin/kubectl  
 $ chmod +x /usr/bin/kubectl
 $ kubectl config set-cluster test-doc --server=http://10.246.1.101:8080
 $ kubectl config set-context test-doc --cluster=test-doc
 $ kubectl config use-context test-doc
 $ kubectl get nodes
+```
+
+###start SkyDNS
+
+create file skydns-rc.yaml and put following contents to the file
+
+```
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: kube-dns-v17
+  #namespace: kube-system
+  labels:
+    k8s-app: kube-dns
+    version: v17
+    kubernetes.io/cluster-service: "true"
+spec:
+  replicas: 1
+  selector:
+    k8s-app: kube-dns
+    version: v17
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-dns
+        version: v17
+        kubernetes.io/cluster-service: "true"
+    spec:
+      containers:
+      - name: kubedns
+        image: gcr.io/google_containers/kubedns-amd64:1.6
+        resources:
+          # TODO: Set memory limits when we've profiled the container for large
+          # clusters, then set request = limit to keep this container in
+          # guaranteed class. Currently, this container falls into the
+          # "burstable" category so the kubelet doesn't backoff from restarting it.
+          limits:
+            cpu: 100m
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 60
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /readiness
+            port: 8081
+            scheme: HTTP
+          # we poll on pod startup for the Kubernetes master service and
+          # only setup the /readiness HTTP server once that's available.
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+        args: ["--domain=cluster.local.", "--dns-port=10053", "--kube-master-url=http://10.246.1.101:8080"]
+
+        
+        ports:
+        - containerPort: 10053
+          name: dns-local
+          protocol: UDP
+        - containerPort: 10053
+          name: dns-tcp-local
+          protocol: TCP
+      - name: dnsmasq
+        image: gcr.io/google_containers/kube-dnsmasq-amd64:1.3
+        args:
+        - --cache-size=1000
+        - --no-resolv
+        - --server=127.0.0.1#10053
+        ports:
+        - containerPort: 53
+          name: dns
+          protocol: UDP
+        - containerPort: 53
+          name: dns-tcp
+          protocol: TCP
+      - name: healthz
+        image: gcr.io/google_containers/exechealthz-amd64:1.0
+        resources:
+          # keep request = limit to keep this container in guaranteed class
+          limits:
+            cpu: 10m
+            memory: 20Mi
+          requests:
+            cpu: 10m
+            memory: 20Mi
+        args:
+        - -cmd=nslookup kubernetes.default.svc.cluster.local 127.0.0.1 >/dev/null
+        - -port=8080
+        - -quiet
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+      dnsPolicy: Default  # Don't use cluster DNS.
+```
+
+create file skydns-svc.yaml and put following contents to this file:
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-dns
+  #namespace: kube-system
+  labels:
+    k8s-app: kube-dns
+    kubernetes.io/cluster-service: "true"
+    kubernetes.io/name: "KubeDNS"
+spec:
+  selector:
+    k8s-app: kube-dns
+  clusterIP: 10.0.0.10
+  ports:
+  - name: dns
+    port: 53
+    protocol: UDP
+  - name: dns-tcp
+    port: 53
+    protocol: TCP
+```
+
+the start the pods and services:
+
+```
+$ kubectl create -f skydns-rc.yaml
+$ kubectl create -f skydns-svc.yaml
+```
+
+####start dashboard
+
+create file dashboard-controller.yaml and put following contents to this file:
+
+```
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: kubernetes-dashboard-v1.1.0
+  #namespace: kube-system
+  labels:
+    k8s-app: kubernetes-dashboard
+    version: v1.1.0
+    kubernetes.io/cluster-service: "true"
+spec:
+  replicas: 1
+  selector:
+    k8s-app: kubernetes-dashboard
+  template:
+    metadata:
+      labels:
+        k8s-app: kubernetes-dashboard
+        version: v1.1.0
+        kubernetes.io/cluster-service: "true"
+    spec:
+      containers:
+      - name: kubernetes-dashboard
+        image: gcr.io/google_containers/kubernetes-dashboard-amd64:v1.1.0
+        resources:
+          # keep request = limit to keep this container in guaranteed class
+          limits:
+            cpu: 100m
+            memory: 50Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        ports:
+        - containerPort: 9090
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        args: ["--apiserver-host","http://10.246.1.101:8080"]
+
+```
+
+create file dashboard-service.yaml and put following contents to this file:
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubernetes-dashboard
+  #namespace: kube-system
+  labels:
+    k8s-app: kubernetes-dashboard
+    kubernetes.io/cluster-service: "true"
+spec:
+  selector:
+    k8s-app: kubernetes-dashboard
+  ports:
+  - port: 80
+    targetPort: 9090
+```
+
+start the replication controller and service:
+
+```
+$ kubectl create -f dashboard-controller.yaml
+$ kubectl create -f dashboard-service.yaml
 ```
 
 ###External IPs(copied from http://kubernetes.io/docs/user-guide/services/#publishing-services---service-types)
