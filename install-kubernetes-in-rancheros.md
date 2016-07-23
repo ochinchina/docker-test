@@ -1,4 +1,3 @@
-
 ###setup etcd
 ```shell
 $ sudo system-docker  run \
