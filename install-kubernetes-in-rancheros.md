@@ -15,63 +15,19 @@ $  sudo system-docker run --net=host gcr.io/google_containers/etcd-amd64:2.2.5 e
 ###setup flannel
 
 ```shell
-$ sudo system-docker run -v /run/flannel:/run/flannel -d --net=host --privileged -v /dev/net:/dev/net quay.io/coreos/flannel:0.5.5 /opt/bin/flanneld [-iface=enp0s8]
+$ sudo system-docker run -v /run/flannel:/run/flannel -d --net=host --privileged -v /dev/net:/dev/net quay.io/coreos/flannel:0.5.5 /opt/bin/flanneld [-iface=eth1]
 
 ```
 
 ###modify the docker options
 
-add following line to the Service section in file /lib/systemd/system/docker.service
 
 ```
-EnvironmentFile=/run/flannel/subnet.env
-```
-
-change the line in file /lib/systemd/system/docker.service from
-
-```
-ExecStart=/usr/bin/docker daemon -H fd://
-```
-
-to
-
-```
-ExecStart=/usr/bin/docker daemon -H fd:// --bip=${FLANNEL_SUBNET} --mtu=${FLANNEL_MTU}
-```
-After doing above modification, the file /lib/systemd/system/docker.service looks like:
-```
-[Unit]
-Description=Docker Application Container Engine
-Documentation=https://docs.docker.com
-After=network.target docker.socket docker-bootstrap.service
-Requires=docker.socket
-
-[Service]
-Type=notify
-# the default is not to use systemd for cgroups because the delegate issues still
-# exists and systemd currently does not support the cgroup feature set required
-# for containers run by docker
-Environment="HTTP_PROXY=http://example.com:8080" "HTTPS_PROXY=https://example.com:8080" "NO_PROXY=localhost,127.0.0.1,your_private_network"
-EnvironmentFile=/run/flannel/subnet.env
-ExecStart=/usr/bin/docker daemon -H fd:// --bip=${FLANNEL_SUBNET} --mtu=${FLANNEL_MTU}
-MountFlags=slave
-LimitNOFILE=1048576
-LimitNPROC=1048576
-LimitCORE=infinity
-TimeoutStartSec=0
-# set delegate yes so that systemd does not reset the cgroups of docker containers
-Delegate=yes
-
-[Install]
-WantedBy=multi-user.target
+$sudo ros set rancher.docker.args "['daemon','--log-opt','max-size=25m','--log-opt','max-file=2','-s','overlay','-G','docker','-H','unix:///var/run/docker.sock','--bip=10.1.30.1/24','--mtu=1472']"
 
 ```
 
-restart the docker
 
-```shell
-$ sudo systemctl daemon-reload
-$ sudo systemctl restart docker
 ```
 ###setup k8s master
 
@@ -153,33 +109,3 @@ $ kubectl config use-context test-doc
 $ kubectl get nodes
 ```
 
-###External IPs(copied from http://kubernetes.io/docs/user-guide/services/#publishing-services---service-types)
-
-If there are external IPs that route to one or more cluster nodes, Kubernetes services can be exposed on those externalIPs. Traffic that ingresses into the cluster with the external IP (as destination IP), on the service port, will be routed to one of the service endpoints. externalIPs are not managed by Kubernetes and are the responsibility of the cluster administrator.
-
-In the ServiceSpec, externalIPs can be specified along with any of the ServiceTypes. In the example below, my-service can be accessed by clients on 80.11.12.10:80 (externalIP:port)
-```shell
-{
-    "kind": "Service",
-    "apiVersion": "v1",
-    "metadata": {
-        "name": "my-service"
-    },
-    "spec": {
-        "selector": {
-            "app": "MyApp"
-        },
-        "ports": [
-            {
-                "name": "http",
-                "protocol": "TCP",
-                "port": 80,
-                "targetPort": 9376
-            }
-        ],
-        "externalIPs" : [
-            "80.11.12.10"
-        ]
-    }
-}
-```
