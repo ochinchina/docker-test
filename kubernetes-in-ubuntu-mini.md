@@ -228,7 +228,7 @@ gcr.io/google_containers/hyperkube-${ARCH}:${K8S_VERSION} \
 ###install the kubectl
 
 ```shell
-$ wget http://storage.googleapis.com/kubernetes-release/release/v1.2.6/bin/linux/amd64/kubectl
+$ wget http://storage.googleapis.com/kubernetes-release/release/v1.3.3/bin/linux/amd64/kubectl
 $ cp kubectl /usr/bin/kubectl  
 $ chmod +x /usr/bin/kubectl
 $ kubectl config set-cluster test-doc --server=http://10.246.1.101:8080
