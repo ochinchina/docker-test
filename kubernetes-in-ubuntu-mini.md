@@ -156,11 +156,13 @@ $ sudo systemctl restart docker
 ###setup k8s master
 
 ```
+$ export ARCH=amd64
+$ export K8S_VERSION=v1.3.3
 $ sudo docker run -d \
 --net=host \
 --pid=host \
 --restart=always \
-gcr.io/google_containers/hyperkube-amd64:v1.2.6 \
+gcr.io/google_containers/hyperkube-${ARCH}:${K8S_VERSION} \
 /hyperkube apiserver \
 --advertise-address=10.246.1.101 \
 --insecure-bind-address=10.246.1.101 \
@@ -173,7 +175,7 @@ $ sudo docker run -d \
 --net=host \
 --pid=host \
 --restart=always \
-gcr.io/google_containers/hyperkube-amd64:v1.2.6 \
+gcr.io/google_containers/hyperkube-${ARCH}:${K8S_VERSION} \
 /hyperkube controller-manager \
 --master=10.246.1.101:8080 \
 --logtostderr=true
@@ -183,14 +185,16 @@ $ sudo docker run -d \
 --net=host \
 --pid=host \
 --restart=always \
-gcr.io/google_containers/hyperkube-amd64:v1.2.6 \
+gcr.io/google_containers/hyperkube-${ARCH}:${K8S_VERSION} \
 /hyperkube scheduler \
 --master=10.246.1.101:8080 \
 --logtostderr=true
 ```
 ###set up k8s minion
 ```shell
-sudo docker run -d \
+$ export ARCH=amd64
+$ export K8S_VERSION=v1.3.3
+$ sudo docker run -d \
 --volume=/:/rootfs:ro \
 --volume=/sys:/sys:rw \
 --volume=/var/lib/docker/:/var/lib/docker:rw \
@@ -199,10 +203,10 @@ sudo docker run -d \
 --net=host \
 --pid=host \
 --privileged \
-gcr.io/google_containers/hyperkube-amd64:v1.2.6 \
+gcr.io/google_containers/hyperkube-${ARCH}:${K8S_VERSION} \
 /hyperkube kubelet \
 --address=0.0.0.0 --port=10250 \
---api_servers=http://10.246.1.101:8080 \
+--api_servers=10.246.1.101:8080 \
 --logtostderr=true
 
 
@@ -215,9 +219,9 @@ sudo docker run -d \
 --net=host \
 --pid=host \
 --privileged \
-gcr.io/google_containers/hyperkube-amd64:v1.2.6 \
+gcr.io/google_containers/hyperkube-${ARCH}:${K8S_VERSION} \
 /hyperkube proxy \
---master=http://10.246.1.101:8080 \
+--master=10.246.1.101:8080 \
 --logtostderr=true
 ```
 
