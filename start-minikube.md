@@ -30,3 +30,18 @@ $ minikube start --docker-env HTTP_PROXY=http://$YOURPROXY:PORT \
 $ kubectl run hello-minikube --image=gcr.io/google_containers/echoserver:1.4 --port=8080
 ```
 
+### stop minikube
+
+```shell
+
+$ minikube stop
+
+```
+
+### delete the started minikube
+
+to delete the created minikube VM, run the following command:
+
+```shell
+$ minikube delete
+```
