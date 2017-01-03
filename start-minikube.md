@@ -28,6 +28,8 @@ $ minikube start --docker-env HTTP_PROXY=http://$YOURPROXY:PORT \
 ### start a service
 
 ```shell
+$ minikube_ip=`minikube ip`
+$ export NO_PROXY="127.0.0.1,<minikube_ip>"
 $ kubectl run hello-minikube --image=gcr.io/google_containers/echoserver:1.4 --port=8080
 ```
 
