@@ -336,4 +336,38 @@ http {
 }
 ```
 
+### test the hello service
 
+Use the following command to test if the hello service is reachable.
+
+```shell
+$ POD=$(kubectl get pod --namespace=kube-system| grep nginx-ingress-controller| awk '{ print $1}')
+$ IP=$(kubectl describe pod $POD --namespace=kube-system| grep IP|awk '{ print $2}')
+$ curl -H "Host: test.io" http://$IP/hello
+CLIENT VALUES:
+client_address=('10.10.4.0', 49104) (10.10.4.0)
+command=GET
+path=/hello
+real path=/hello
+query=
+request_version=HTTP/1.1
+
+SERVER VALUES:
+server_version=BaseHTTP/0.6
+sys_version=Python/3.5.0
+protocol_version=HTTP/1.0
+
+HEADERS RECEIVED:
+Accept=*/*
+Connection=close
+Host=stou.io
+User-Agent=curl/7.47.0
+X-Forwarded-For=10.140.0.23
+X-Forwarded-Host=stou.io
+X-Forwarded-Port=80
+X-Forwarded-Proto=http
+X-Original-URI=/hello
+X-Real-IP=10.140.0.23
+X-Scheme=http
+
+```
