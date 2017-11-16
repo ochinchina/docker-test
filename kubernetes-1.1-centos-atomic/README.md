@@ -1,12 +1,12 @@
-####install centos atomic
+#### install centos atomic
 
 get the centos atomic from the http://cloud.centos.org/centos/7/atomic/images/CentOS-Atomic-Host-7-Installer.iso, install this .iso to your machine
 
-#####configure the network
+##### configure the network
 
 if the DHCP is used but no network address is got, edit the file /etc/sysconfig/network-scripts/ifcfg-enp0s3 and change the item "ONBOOT" from "no" to "yes"
 
-#####configure proxy for atomic upgrade
+##### configure proxy for atomic upgrade
 
 if your atomic is installed behind proxy server, before upgrading the atomic host, you need to add proxy in the file /etc/ostree/remotes.d/centos-atomic-host.conf
 
@@ -19,7 +19,7 @@ branches=centos-atomic-host/7/x86_64/standard;
 gpg-verify=true
 proxy=http://example.com:8080
 ```
-#####more space for root directory
+##### more space for root directory
 
 edit the file /etc/sysconfig/docker-storage-setup file and add the ROOT_SIZE to this file
 
@@ -30,7 +30,7 @@ ROOT_SIZE=6G
 
 ```
 
-#####proxy setting for docker
+##### proxy setting for docker
 
 if docker runs behind proxy, the file /etc/sysconfig/docker should be edit and following lines should be append to the end of the file /etc/sysconfig/docker:
 
@@ -46,7 +46,7 @@ $ sudo vi /etc/sysconfig/docker
 $ sudo systemctl restart docker
 ```
 
-####install docker&kubernetes
+#### install docker&kubernetes
 
 
 ####configure and start etcd
@@ -98,7 +98,7 @@ After all the aboving configuration are done, start the etcd on each node
 $ sudo systemctl start etcd
 ```
 
-####set the network configuration for kubernetes cluster nodes
+#### set the network configuration for kubernetes cluster nodes
 
 From one etcd node, use etcdctl command to set the /coreos.com/network/config
 
@@ -106,7 +106,7 @@ From one etcd node, use etcdctl command to set the /coreos.com/network/config
 $ etcdctl set /coreos.com/network/config '{"Network": "10.0.0.0/8", "SubnetLen": 20,  "SubnetMin": "10.10.0.0", "SubnetMax": "10.99.0.0","Backend": {"Type": "udp","Port": 7890}}'
 ```
 
-####configure and start flanneld on all the kubernetes cluster nodes
+#### configure and start flanneld on all the kubernetes cluster nodes
 
 edit file /etc/sysconfig/flanneld on all the kubernetes cluster nodes.
 
@@ -128,7 +128,7 @@ $ systemctl start flanneld
 ```
 
 
-####start docker
+#### start docker
 
 remove the ip address of bridge 'docker0' if a ip address is assigned to docker0 before
 
@@ -143,7 +143,7 @@ Start the docker on all nodes in the cluster
 $ systemctl start docker
 ```
 
-####configure kubernetes master
+#### configure kubernetes master
 
 Choose one node for running kubernetes master, in this example, the 10.245.1.101 is choosed as the kubernetes master
 
@@ -167,7 +167,7 @@ $ sudo systemctl start kube-controller-manager
 $ sudo systemctl start kube-scheduler
 ```
 
-####configure kubernetes minions
+#### configure kubernetes minions
 
 Edit the /etc/kubernetes/kubelet and change the KUBELET_ADDRESS, KUBELET_HOSTNAME, and KUBELET_API_SERVER
 
@@ -185,7 +185,7 @@ $ sudo systemctl start kubelet
 $ sudo systemctl start kube-proxy
 ```
 
-####check the nodes managed by master
+#### check the nodes managed by master
 
 ```shell
 $ cubectl get nodes
