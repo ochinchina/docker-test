@@ -196,6 +196,8 @@ NAME           LABELS                                STATUS
 
 ### skyDNS deployment
 
+the skydns-rc.yml and skydns-svc.yml are from template in https://github.com/kubernetes/kubernetes/tree/v1.5.8/cluster/addons/dns
+
 skydns-rc.yml:
 ```yaml
 # Copyright 2016 The Kubernetes Authors.
@@ -281,7 +283,7 @@ spec:
         - --domain=cluster.local.
         - --dns-port=10053
         - --config-map=kube-dns
-        - --kube-master-url=http://192.168.122.20:8080
+        - --kube-master-url=http://10.245.1.101:8080
         # This should be set to v=2 only after the new image (cut from 1.5) has
         # been released, otherwise we will flood the logs.
         - --v=0
@@ -373,7 +375,7 @@ spec:
       dnsPolicy: Default # Don't use cluster DNS.
 
 ```
-skydns-service.yaml
+skydns-svc.yml
 
 ```yaml
 # Copyright 2016 The Kubernetes Authors.
