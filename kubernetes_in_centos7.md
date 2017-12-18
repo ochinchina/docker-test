@@ -251,8 +251,8 @@ events {
 
 http {
   upstream backend_hosts {
-    server 192.168.122.20:8080;
-    server 192.168.122.63:8080;
+    server 10.245.1.101:8080;
+    server 10.245.1.102:8080;
   }
 
   server {
