@@ -150,7 +150,7 @@ Choose one node for running kubernetes master, in this example, the 10.245.1.101
 change KUBE_API_ADDRESS, KUBE_API_PORT, KUBE_ETCD_SERVERS, KUBE_SERVICE_ADDRESSES and KUBE_SERVICE_ADDRESSES parameters in /etc/kubernetes/apiserver
 
 ```
-KUBE_API_ADDRESS="--address=0.0.0.0"
+KUBE_API_ADDRESS="--address=10.245.1.101"
 KUBE_API_PORT="--port=8080"
 KUBE_ETCD_SERVERS="--etcd_servers=http://10.245.1.101:2379,http://10.245.1.102:2379,http://10.245.1.103:2379"
 //the KUBE_SERVICE_ADDRESSES should be in network 10.0.0.0/8 but should be not in range 10.10.0.0 to 10.99.0.0
@@ -173,7 +173,7 @@ Edit the /etc/kubernetes/kubelet and change the KUBELET_ADDRESS, KUBELET_HOSTNAM
 
 An example of minion on node 10.245.1.102 is
 ```
-KUBELET_ADDRESS="--address=0.0.0.0"
+KUBELET_ADDRESS="--address=10.245.1.102"
 KUBELET_HOSTNAME="--hostname_override=10.245.1.102"
 KUBELET_API_SERVER="--api_servers=http://10.245.1.101:8080"
 ```
@@ -193,6 +193,131 @@ NAME           LABELS                                STATUS
 10.245.1.102   kubernetes.io/hostname=10.245.1.102   Ready
 10.245.1.103   kubernetes.io/hostname=10.245.1.103   Ready
 ```
+
+### Kubernetes master HA
+
+There are lots of document describe how to setup multiple kubernetes master for HA purpose. For the offical setup, please refer the document: https://kubernetes.io/docs/admin/high-availability.
+
+For small-size k8s cluster, if there is no enough node to create a separate k8s master cluster, we can setup a proxy on all nodes with following method:
+
+#### start-up multiple k8s master
+
+##### Change KUBE_API_ADDRESS in /etc/kubernetes/apiserver file in master nodes
+
+On each k8s master nodes, change the parameter KUBE_API_ADDRESS:
+
+On node 10.245.1.101, change KUBE_API_ADDRESS to:
+```shell
+KUBE_API_ADDRESS="--insecure-bind-address=10.245.1.101"
+```
+
+On node 10.245.1.102, change the KUBE_API_ADDRESS to:
+```shell
+KUBE_API_ADDRESS="--insecure-bind-address=10.245.1.102"
+```
+
+##### Change KUBE_CONTROLLER_MANAGER_ARGS in /etc/kubernetes/controller-manager in master nodes
+
+For each node that running the k8s master, change the KUBE_CONTROLLER_MANAGER_ARGS to:
+
+```shell
+KUBE_CONTROLLER_MANAGER_ARGS="--leader-elect=true"
+```
+
+##### Change KUBE_MASTER in /etc/kubernetes/config in all nodes
+
+For all the nodes, including the master nodes and missions nodes, change the KUBE_MASTER in /etc/kubernetes/config as:
+
+```shell
+KUBE_MASTER="--master=http://localhost:8080"
+```
+
+##### change KUBELET_ARGS in /etc/kubernetes/kubelet in all nodes
+
+For all the nodes, including the master nodes and missions nodes, change the KUBELET_ARGS in /etc/kubernetes/kubelet in all nodes as:
+
+```shell
+KUBELET_ARGS="--cluster_dns=10.254.0.100 --cluster_domain=cluster.local --pod-manifest-path=/etc/kubelet.d/"
+```
+
+##### put nginx.conf to /etc/nginx
+
+put the nginx.conf with following contents to /etc/nginx:
+
+```shell
+events {
+        worker_connections  1024;
+}
+
+http {
+  upstream backend_hosts {
+    server 192.168.122.20:8080;
+    server 192.168.122.63:8080;
+  }
+
+  server {
+    listen 127.0.0.1:8080;
+    server_name 127.0.0.1;
+
+    location / {
+        proxy_pass http://backend_hosts;
+    }
+  }
+}
+
+```
+
+##### put the following static-pods configure /etc/kubelet.d/ to all the nodes:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: k8s-master-proxy
+spec:
+  hostNetwork: true
+  containers:
+    - name: k8s-master-proxy
+      image: nginx:1.13.7-alpine
+      volumeMounts:
+        - name: nginx-cfg
+          mountPath: /etc/nginx
+  volumes:
+    - name: nginx-cfg
+      hostPath:
+        path: /etc/nginx
+```
+
+
+#### start a proxy for the k8s master
+
+After all the configurations are ready, we can start-up the master and kubelet:
+
+On master node, for example, 10.245.1.101 and 10.245.1.102, start the kube-apiserver, kube-controller-manager and kube-scheduler as below:
+
+```shell
+$ sudo systemctl start kube-apiserver
+$ sudo systemctl start kube-controllere-manager
+$ sudo systemctl start kube-scheduler
+```
+
+and on all the nodes to start the kube-proxy and the kubelet
+
+```shell
+$ sudo systemctl start kubelet
+$ sudo systemctl start kube-proxy
+```
+
+After all the nodes startup, login to any one of node to check the k8s node status:
+
+```shell
+$ kubectl get node
+NAME           LABELS                                STATUS
+10.245.1.102   kubernetes.io/hostname=10.245.1.102   Ready
+10.245.1.103   kubernetes.io/hostname=10.245.1.103   Ready
+```
+
+Then we can deploy applications to the k8s cluster.
 
 ### skyDNS deployment
 
